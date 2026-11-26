@@ -48,7 +48,6 @@ function normalizeRecord(record: RecordItem, masterKey?: MasterKey): RecordItem 
   if (masterKey === 'montages' && !next.Planta) {
     const defaults: Record<string, { Planta: string; Proceso: string; Máquina: string }> = {
       'M-3N': { Planta: '301', Proceso: 'Formado', Máquina: 'YODER 1' },
-      'M-4N': { Planta: '301', Proceso: 'Formado', Máquina: 'YODER 2' },
     };
     Object.assign(next, defaults[String(next.Código)] ?? { Planta: '301', Proceso: 'Formado', Máquina: 'YODER 1' });
   }
@@ -96,6 +95,27 @@ function normalizeRecord(record: RecordItem, masterKey?: MasterKey): RecordItem 
   if ((masterKey === 'capacities' || masterKey === 'standardTimes') && !next.Proceso && next.Operación) next.Proceso = next.Operación;
   return next;
 }
+function isRemovedMachine(value: unknown) {
+  return normalizeIdentity(value) === 'YODER 2';
+}
+function isRemovedMontage(value: unknown) {
+  return normalizeIdentity(value).replace(/[″”]/g, '"') === 'MONTAJE 4" N';
+}
+function sanitizeRemovedReferences(source: Record<string, RecordItem[]>) {
+  const sanitized = Object.fromEntries(Object.entries(source).map(([key, list]) => [
+    key,
+    (list ?? []).filter((record) => {
+      const machine = record.Máquina ?? record.Maquina ?? record.machine;
+      const montage = record.Montaje ?? record.montage;
+      return !isRemovedMachine(machine) &&
+        normalizeIdentity(record.Código) !== 'M-4N' &&
+        !isRemovedMontage(montage) &&
+        normalizeIdentity(record.Desde) !== 'M-4N' &&
+        normalizeIdentity(record.Hacia) !== 'M-4N';
+    }),
+  ]));
+  return sanitized as Record<string, RecordItem[]>;
+}
 type MasterTab = 'estructura' | 'procesos' | 'producto' | 'demanda';
 const masterTabs: { key: MasterTab; label: string; description: string }[] = [
   { key: 'estructura', label: 'Estructura productiva', description: 'Plantas, máquinas y calendarios' },
@@ -119,7 +139,7 @@ export function MastersView({ requestedMasterKey }: { requestedMasterKey?: Maste
       const stored = window.localStorage.getItem(mastersStorageKey);
       if (!stored) return defaults;
       const saved = JSON.parse(stored) as Record<string, RecordItem[]>;
-      return Object.fromEntries(masterDefinitions.map((item) => [item.key, (saved[item.key] ?? defaults[item.key]).map((record) => normalizeRecord(record, item.key))]));
+      return sanitizeRemovedReferences(Object.fromEntries(masterDefinitions.map((item) => [item.key, (saved[item.key] ?? defaults[item.key]).map((record) => normalizeRecord(record, item.key))])));
     } catch {
       return defaults;
     }
@@ -219,7 +239,7 @@ export function MastersView({ requestedMasterKey }: { requestedMasterKey?: Maste
     void loadMasterState()
       .then((remoteRecords) => {
         if (cancelled) return;
-        if (remoteRecords) setRecords(remoteRecords as Record<string, RecordItem[]>);
+        if (remoteRecords) setRecords(sanitizeRemovedReferences(remoteRecords as Record<string, RecordItem[]>));
         setRemoteReady(true);
       })
       .catch(() => {

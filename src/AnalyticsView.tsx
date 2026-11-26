@@ -16,7 +16,6 @@ type ProductionRow = {
 
 const productionData: ProductionRow[] = [
   { plant: 'PLANTA AUTOPISTA SUR', machine: 'YODER 1', montage: 'Montaje 3” N', thickness: '1,5 mm', operator: 'Carlos Rojas', produced: 92, good: 89, ideal: 100, plannedMinutes: 480, downtimeMinutes: 42 },
-  { plant: 'PLANTA AUTOPISTA SUR', machine: 'YODER 2', montage: 'Montaje 4” N', thickness: '2,0 mm', operator: 'Martha León', produced: 68, good: 65, ideal: 75, plannedMinutes: 480, downtimeMinutes: 35 },
   { plant: 'PLANTA AUTOPISTA SUR', machine: 'ENDEREZADORA', montage: 'Montaje 3” N', thickness: '1,5 mm', operator: 'Jorge Díaz', produced: 81, good: 80, ideal: 88, plannedMinutes: 480, downtimeMinutes: 28 },
   { plant: 'PLANTA AUTOPISTA SUR', machine: 'PAXSON', montage: 'Lote roscado 2”', thickness: '2,5 mm', operator: 'Ana Torres', produced: 34, good: 31, ideal: 42, plannedMinutes: 480, downtimeMinutes: 120 },
   { plant: 'PLANTA MOSQUERA', machine: 'FORMADORA 1', montage: 'Montaje 6”', thickness: '3,0 mm', operator: 'Luis Pérez', produced: 116, good: 113, ideal: 125, plannedMinutes: 480, downtimeMinutes: 25 },
