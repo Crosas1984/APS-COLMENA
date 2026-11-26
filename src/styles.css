@@ -147,6 +147,7 @@ main{min-width:0;width:0;max-width:100%;padding-left:clamp(18px,3vw,38px);paddin
 .record-form select{min-width:0;border:1px solid #c8d8e3;border-radius:7px;background:#fff;padding:9px 10px;color:#23465c;font-size:11px}
 .record-form .save-action{font-weight:900}
 .detail-total{padding:10px 12px;border:1px solid #d2e1e7;border-top:0;border-radius:0 0 8px 8px;background:#f7fbfc;color:#47758b;font-size:10px;font-weight:900;text-align:right}
+.save-status{display:inline-flex;align-items:center;gap:6px;margin-left:14px;color:#2c9973;font-size:10px;font-weight:800}.save-status i{width:7px;height:7px;border-radius:50%;background:#4ac194;box-shadow:0 0 7px #4ac194}
 .record-form input[list="machine-options"]{text-transform:uppercase}
 .detail-filter select,.record-form select{text-transform:uppercase}
 .master-tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:0 0 16px;border-bottom:1px solid #dbe7ed;padding-bottom:8px}.master-tab{display:grid;gap:4px;border:1px solid #d6e3ea;border-radius:9px;background:#fff;padding:10px 12px;text-align:left;color:#6d8999}.master-tab strong{color:#2b6278;font-size:11px}.master-tab span{font-size:9px;line-height:1.35}.master-tab:hover,.master-tab.active{border-color:#51aab5;background:#eff9fa;box-shadow:0 4px 12px #2f8c9b16}.master-tab.active strong{color:#176d7c}

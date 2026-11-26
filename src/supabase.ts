@@ -26,7 +26,7 @@ export async function saveMasterState(records: Record<string, unknown>) {
   const response = await fetch(stateEndpoint(), {
     method: 'POST',
     headers: { ...headers(), Prefer: 'resolution=merge-duplicates,return=minimal' },
-    body: JSON.stringify({ id: 'default', records }),
+    body: JSON.stringify({ id: 'default', records, updated_at: new Date().toISOString() }),
   });
   if (!response.ok) throw new Error(`Supabase POST ${response.status}`);
 }
