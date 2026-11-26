@@ -5,6 +5,7 @@ import { plantCatalog } from './data';
 import { loadMasterState, saveMasterState, supabaseConfigured } from './supabase';
 
 type RecordItem = Record<string, any> & { __blocked?: boolean };
+type DeleteRequest = { masterKey: MasterKey; originalIndex: number; record: RecordItem };
 const statusOptions = ['Activo', 'Inactivo'];
 const mastersStorageKey = 'aps-colmena-master-records-v1';
 function ActionGlyph({ type }: { type: 'edit' | 'duplicate' | 'block' | 'unlock' | 'delete' }) {
@@ -146,6 +147,7 @@ export function MastersView({ requestedMasterKey }: { requestedMasterKey?: Maste
   });
   const [form, setForm] = useState<RecordItem>({});
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [deleteRequest, setDeleteRequest] = useState<DeleteRequest | null>(null);
   const [erpUrl, setErpUrl] = useState('');
   const [erpStatus, setErpStatus] = useState('Sin configurar');
   const [plantFilter, setPlantFilter] = useState('Todas');
@@ -314,7 +316,25 @@ export function MastersView({ requestedMasterKey }: { requestedMasterKey?: Maste
   function editRecord(index: number) { const originalIndex = selectedRecords.indexOf(filteredRecords[index]); setEditingIndex(originalIndex); setForm({ ...selectedRecords[originalIndex] }); }
   function duplicateRecord(index: number) { if (!selected) return; const originalIndex = selectedRecords.indexOf(filteredRecords[index]); const copy = { ...selectedRecords[originalIndex] }; delete copy.__blocked; const identityField = selected.key === 'processTypes' ? 'Proceso' : selected.fields.includes('Código') ? 'Código' : selected.fields.includes('Referencia') ? 'Referencia' : selected.fields[0]; if (selected.key !== 'montages') delete copy[identityField]; setEditingIndex(null); setForm(copy); }
   function toggleBlocked(index: number) { if (!selected) return; const originalIndex = selectedRecords.indexOf(filteredRecords[index]); setRecords((current) => ({ ...current, [selected.key]: current[selected.key].map((record, row) => row === originalIndex ? { ...record, __blocked: !record.__blocked } : record) })); }
-  function deleteRecord(index: number) { if (!selected || !window.confirm('¿Eliminar este registro del maestro? Esta acción no se puede deshacer.')) return; const originalIndex = selectedRecords.indexOf(filteredRecords[index]); setRecords((current) => ({ ...current, [selected.key]: current[selected.key].filter((_, row) => row !== originalIndex) })); if (editingIndex === originalIndex) { setEditingIndex(null); setForm({}); } }
+  function deleteRecord(index: number) {
+    if (!selected) return;
+    const record = filteredRecords[index];
+    const originalIndex = selectedRecords.indexOf(record);
+    if (!record || originalIndex < 0) return;
+    setDeleteRequest({ masterKey: selected.key, originalIndex, record });
+  }
+  function confirmDelete() {
+    if (!deleteRequest) return;
+    const { masterKey, originalIndex, record } = deleteRequest;
+    setRecords((current) => {
+      const currentRecords = current[masterKey] ?? [];
+      const currentIndex = currentRecords.indexOf(record);
+      const removeIndex = currentIndex >= 0 ? currentIndex : originalIndex;
+      return { ...current, [masterKey]: currentRecords.filter((_, row) => row !== removeIndex) };
+    });
+    if (selectedKey === masterKey && editingIndex === originalIndex) { setEditingIndex(null); setForm({}); }
+    setDeleteRequest(null);
+  }
   function exportAllMasters() {
     const workbook = XLSX.utils.book_new();
     visibleMasterDefinitions.forEach((master) => {
@@ -489,5 +509,6 @@ export function MastersView({ requestedMasterKey }: { requestedMasterKey?: Maste
       <div className="detail-table"><div className="detail-row detail-header" style={tableGridStyle}><b>#</b>{visibleFields.map((field) => <b key={field}>{field}</b>)}<b>Acciones</b></div>{filteredRecords.map((record, index) => <div className={`detail-row ${record.__blocked ? 'blocked-row' : ''}`} style={tableGridStyle} key={`${selected.key}-${index}`}><span>{index + 1}</span>{visibleFields.map((field) => <span key={field}>{record[field] || '—'}</span>)}<span className="row-actions"><button className="icon-action" title="Editar registro" aria-label="Editar registro" onClick={() => editRecord(index)}><ActionGlyph type="edit" /></button><button className="icon-action" title="Duplicar registro" aria-label="Duplicar registro" onClick={() => duplicateRecord(index)}><ActionGlyph type="duplicate" /></button><button className="icon-action" title={record.__blocked ? 'Desbloquear registro' : 'Bloquear registro'} aria-label={record.__blocked ? 'Desbloquear registro' : 'Bloquear registro'} onClick={() => toggleBlocked(index)}><ActionGlyph type={record.__blocked ? 'unlock' : 'block'} /></button><button className="icon-action delete-action" title="Eliminar registro" aria-label="Eliminar registro" onClick={() => deleteRecord(index)}><ActionGlyph type="delete" /></button></span></div>)}</div><div className="detail-total">Total de registros: {filteredRecords.length}</div>
       <form ref={editFormRef} className="record-form" onSubmit={saveRecord}>{visibleFields.map((field) => field === 'Código' && selected.key === 'thicknesses' ? <input key={field} placeholder="Código" value={thicknessCode(form['Espesor (in)'])} readOnly /> : field === 'Proceso' && selected.key === 'machines' ? <select key={field} aria-label={field} value={form[field] || ''} onChange={(event) => setForm({ ...form, [field]: event.target.value })}><option value="">Proceso</option>{processOptions.map((process) => <option value={process} key={process}>{process}</option>)}</select> : field === 'Montaje' && selected.key === 'montages' ? <span className="editable-select"><input key={field} list="montage-options" aria-label={field} placeholder="Seleccione o escriba un montaje" value={form[field] || ''} onChange={(event) => setForm({ ...form, [field]: event.target.value })} /><datalist id="montage-options">{montageOptions.map((montage) => <option value={montage} key={montage} />)}</datalist></span> : field === 'Máquina' && selected.key === 'montages' ? <span className="editable-select"><input key={field} list="machine-options" aria-label={field} placeholder="Seleccione o escriba una máquina" value={form[field] || ''} onChange={(event) => setForm({ ...form, Máquina: event.target.value })} /><datalist id="machine-options">{machineOptions.map((machine) => <option value={machine} key={machine} />)}</datalist></span> : field === 'Tipo de laminado' && selected.key === 'montages' ? <select key={field} aria-label={field} value={form[field] || ''} onChange={(event) => setForm({ ...form, 'Tipo de laminado': event.target.value })}><option value="">Seleccione laminado</option>{familyOptions.map((family) => <option value={family} key={family}>{family}</option>)}</select> : field === 'Familia de laminado' && (selected.key === 'montages' || selected.key === 'thicknesses') ? <select key={field} aria-label={field} value={form[field] || ''} onChange={(event) => setForm({ ...form, [field]: event.target.value })}><option value="">Familia de laminado</option>{familyOptions.map((family) => <option value={family} key={family}>{family}</option>)}</select> : field === 'Espesor' && selected.key === 'montages' ? <select key={field} aria-label={field} value={form[field] || ''} onChange={(event) => { const inches = event.target.value; setForm({ ...form, Espesor: inches, 'Espesor (mm)': inches ? (Number(inches) * 25.4).toFixed(2) : '' }); }}><option value="">Espesor (in)</option>{thicknessOptions.map((thickness) => <option value={thickness} key={thickness}>{thickness} in</option>)}</select> : field === 'Espesor (in)' && selected.key === 'thicknesses' ? <input key={field} type="number" step="0.001" min="0" placeholder="Espesor (in)" value={form[field] || ''} onChange={(event) => { const inches = event.target.value; setForm({ ...form, 'Espesor (in)': inches, 'Espesor (mm)': inches ? (Number(inches) * 25.4).toFixed(2) : '' }); }} /> : field === 'Espesor (mm)' && (selected.key === 'thicknesses' || selected.key === 'montages') ? <input key={field} placeholder={field} value={form[field] || ''} readOnly /> : field === 'Estado' ? <select key={field} aria-label={field} value={form[field] || ''} onChange={(event) => setForm({ ...form, [field]: event.target.value })}><option value="">Estado</option>{statusOptions.map((status) => <option value={status} key={status}>{status}</option>)}</select> : <input key={field} placeholder={field} value={form[field] || ''} onChange={(event) => setForm({ ...form, [field]: event.target.value })} />)}<button type="submit" className="secondary save-action">{editingIndex === null ? '+ Crear registro' : 'Guardar cambios'}</button>{editingIndex !== null && <button type="button" className="cancel-action" onClick={() => { setEditingIndex(null); setForm({}); }}>Cancelar</button>}</form>
     </div>}
+    {deleteRequest && <div className="confirm-overlay" role="presentation" onMouseDown={(event) => { if (event.currentTarget === event.target) setDeleteRequest(null); }}><div className="confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="delete-dialog-title"><p className="kicker">CONFIRMACIÓN</p><h2 id="delete-dialog-title">Eliminar registro</h2><p>Confirma que deseas eliminar este registro del maestro:</p><strong>{[masterDefinitions.find((item) => item.key === deleteRequest.masterKey)?.title, deleteRequest.record.Código, deleteRequest.record.Montaje, deleteRequest.record.Referencia].filter(Boolean).join(' · ')}</strong><small>Esta acción no se puede deshacer.</small><div className="confirm-dialog-actions"><button type="button" className="cancel-action" onClick={() => setDeleteRequest(null)}>Cancelar</button><button type="button" className="delete-confirm" onClick={confirmDelete}>Eliminar registro</button></div></div></div>}
   </section>;
 }
